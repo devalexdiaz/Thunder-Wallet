@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "470720197541",
+    "project_id": "thunder-wallet",
+    "storage_bucket": "thunder-wallet.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:470720197541:android:10cbc398ab3c8139996e4c",
+        "android_client_info": {
+          "package_name": "com.thunder.wallet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKCyVmnBGfM_fFTIMqw30BO-cgl1TU5PE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
