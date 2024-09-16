@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class IngresoTile extends StatelessWidget {
+class GastoTile extends StatelessWidget {
   final String id;
   final int cantidad;
   final String titulo;
@@ -11,7 +11,7 @@ class IngresoTile extends StatelessWidget {
   final Future<bool> Function() confirmDismiss;
   final Future<void> Function() onTap;
 
-  const IngresoTile({
+  const GastoTile({
     required this.id,
     required this.cantidad,
     required this.titulo,
@@ -43,14 +43,20 @@ class IngresoTile extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 5.0),
         child: ListTile(
-          title: Text(titulo),
-          subtitle: Text(tipo),
+          title: Text(
+            titulo.toString(),
+            style: const TextStyle(fontWeight: FontWeight.w400),
+          ),
+          subtitle: Text(
+            tipo.toString(),
+            style: const TextStyle(fontWeight: FontWeight.w300),
+          ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(cantidad.toString(),
-                  style: const TextStyle(color: Colors.green)),
+                  style: const TextStyle(fontSize: 15, color: Colors.red)),
               Text(fechaFormateada, style: const TextStyle(color: Colors.grey)),
             ],
           ),

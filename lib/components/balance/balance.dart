@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/firebase_service.dart';
 import 'cards.dart'; // Asegúrate de que este archivo exista y sea accesible
 
 class Balance extends StatelessWidget {
@@ -19,25 +20,57 @@ class Balance extends StatelessWidget {
   }
 
   Widget _buildBalanceHeader(BuildContext context) {
-    return Column(
-      children: [
-        Text('DINERO DISPONIBLE',
-            style: TextStyle(color: Theme.of(context).colorScheme.tertiary)),
-        const Text(
-          '\$100.379',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 5),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return StreamBuilder<Map<String, int>>(
+      stream: getMovimientosTotales(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Mientras se cargan los datos, mostrar una versión inicial
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: Text('No hay datos disponibles'));
+        }
+
+        // Acceder a los datos del snapshot
+        final data = snapshot.data!;
+        final saldoDisponible = data['saldoDisponible']!;
+        final totalIngresos = data['totalIngresos']!;
+        final totalGastos = data['totalGastos']!;
+
+        return Column(
           children: [
-            _buildBalanceColumn(
-                "Ingresos semanales", '\$471.379', Colors.green),
-            _buildBalanceColumn("Gastos semanales", '\$411.379', Colors.red),
+            // Saldo disponible
+            Text(
+              '\$${saldoDisponible.toString()}',
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 5),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                // Ingresos
+                _buildBalanceColumn(
+                  "Ingresos del mes", // Cambié a 'del mes' ya que el stream es mensual
+                  '\$${totalIngresos.toString()}',
+                  Colors.green,
+                ),
+                // Gastos
+                _buildBalanceColumn(
+                  "Gastos del mes", // Cambié a 'del mes' por el mismo motivo
+                  '\$${totalGastos.toString()}',
+                  Colors.red,
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
           ],
-        ),
-        const SizedBox(height: 15),
-      ],
+        );
+      },
     );
   }
 
@@ -71,8 +104,6 @@ class Balance extends StatelessWidget {
                   () async {
                 await Navigator.pushNamed(context, '/add-ingreso');
               }),
-              _buildActionButton(
-                  context, 'Inversión', Icons.monetization_on_outlined, () {}),
               _buildActionButton(context, 'Nuevo', Icons.add, () {}),
             ],
           ),

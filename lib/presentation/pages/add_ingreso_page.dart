@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:wallet/services/firebase_service.dart';
 
+// Componentes de formulario
+import 'widgets/data_time_selector.dart';
+import 'widgets/text_field_widget.dart';
+
+/// Página para agregar un ingreso.
 class AddIngresoPage extends StatefulWidget {
   const AddIngresoPage({super.key});
 
   @override
-  State<AddIngresoPage> createState() => _AddIngresoPageState();
+  _AddIngresoPageState createState() => _AddIngresoPageState();
 }
 
 class _AddIngresoPageState extends State<AddIngresoPage> {
-  final TextEditingController cantidadController = TextEditingController();
-  final TextEditingController tituloController = TextEditingController();
-  final TextEditingController tipoController = TextEditingController();
+  final TextEditingController _cantidadController = TextEditingController();
+  final TextEditingController _tituloController = TextEditingController();
+  final TextEditingController _tipoController = TextEditingController();
 
-  DateTime? selectedDateTime; // Campo para la fecha y hora seleccionadas
+  DateTime? _selectedDateTime;
+
+  @override
+  void dispose() {
+    _cantidadController.dispose();
+    _tituloController.dispose();
+    _tipoController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,95 +37,110 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
       body: Padding(
         padding: const EdgeInsets.all(15.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: tituloController,
-              decoration: const InputDecoration(hintText: 'Ingrese el título'),
+            // Usa el nuevo TextFieldWidget que acepta los colores del theme.
+            TextFieldWidget(
+              controller: _tituloController,
+              hintText: 'Ingrese el título',
             ),
-            TextField(
-              controller: tipoController,
-              decoration:
-                  const InputDecoration(hintText: 'Ingrese el tipo de ingreso'),
+            const SizedBox(height: 10),
+            TextFieldWidget(
+              controller: _tipoController,
+              hintText: 'Ingrese el tipo de ingreso',
             ),
-            TextField(
-              controller: cantidadController,
-              decoration:
-                  const InputDecoration(hintText: 'Ingrese la cantidad'),
+            const SizedBox(height: 10),
+            TextFieldWidget(
+              controller: _cantidadController,
+              hintText: 'Ingrese la cantidad',
               keyboardType: TextInputType.number,
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    selectedDateTime == null
-                        ? 'Seleccione la fecha y hora'
-                        : DateFormat('yyyy-MM-dd HH:mm')
-                            .format(selectedDateTime!),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.calendar_today),
-                  onPressed: () async {
-                    final DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2101),
-                    );
-                    if (pickedDate != null) {
-                      final TimeOfDay? pickedTime = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.fromDateTime(DateTime.now()),
-                      );
-                      if (pickedTime != null) {
-                        setState(() {
-                          selectedDateTime = DateTime(
-                            pickedDate.year,
-                            pickedDate.month,
-                            pickedDate.day,
-                            pickedTime.hour,
-                            pickedTime.minute,
-                          );
-                        });
-                      }
-                    }
-                  },
-                ),
-              ],
+            const SizedBox(height: 20),
+            // Usa el nuevo DateTimeSelector que acepta los colores del theme.
+            DateTimeSelector(
+              selectedDateTime: _selectedDateTime,
+              onPressed: _selectDateTime,
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final titulo = tituloController.text;
-                final tipo = tipoController.text;
-                final cantidadText = cantidadController.text;
-
-                // Convertir el valor de cantidad a double
-                final cantidad = int.tryParse(cantidadText);
-
-                if (titulo.isNotEmpty &&
-                    tipo.isNotEmpty &&
-                    cantidad !=
-                        null && // Validar que la conversión a double fue exitosa
-                    selectedDateTime != null) {
-                  await addIngreso(titulo, tipo, cantidad, selectedDateTime!)
-                      .then((_) {
-                    Navigator.pop(context);
-                  });
-                } else {
-                  // Mostrar mensaje de error si los campos están vacíos o la conversión falló
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text(
-                            'Por favor, complete todos los campos con datos válidos')),
-                  );
-                }
-              },
-              child: const Text('Guardar'),
-            )
+            const SizedBox(height: 20),
+            // Botón actualizado con colores del theme.
+            Center(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
+                    foregroundColor: Theme.of(context).colorScheme.surface,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 22),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(35),
+                    ),
+                    elevation: 1),
+                onPressed: _saveIngreso,
+                child: const Text('Guardar',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Muestra un diálogo para seleccionar la fecha y la hora.
+  Future<void> _selectDateTime() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(DateTime.now()),
+      );
+
+      if (pickedTime != null) {
+        setState(() {
+          _selectedDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
+      }
+    }
+  }
+
+  /// Guarda el ingreso si todos los campos son válidos.
+  Future<void> _saveIngreso() async {
+    final String titulo = _tituloController.text.trim();
+    final String tipo = _tipoController.text.trim();
+    final int? cantidad = int.tryParse(_cantidadController.text.trim());
+
+    if (titulo.isNotEmpty &&
+        tipo.isNotEmpty &&
+        cantidad != null &&
+        _selectedDateTime != null) {
+      try {
+        await addIngreso(titulo, tipo, cantidad, _selectedDateTime!);
+        Navigator.pop(context);
+      } catch (_) {
+        _showErrorSnackbar('Error al guardar el ingreso. Inténtelo de nuevo.');
+      }
+    } else {
+      _showErrorSnackbar(
+          'Por favor, complete todos los campos con datos válidos');
+    }
+  }
+
+  /// Muestra un mensaje de error en un Snackbar.
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

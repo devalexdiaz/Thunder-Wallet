@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wallet/presentation/pages/widget/movimientos_list.dart';
+import 'package:wallet/components/movimientos/movimientos_list.dart';
 import '../../components/balance/balance.dart';
 //import '../../components/transactions/transactions_home.dart';
 import '../../theme/theme_provider.dart';
@@ -20,7 +20,22 @@ class _HomeViewState extends State<HomeView> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          title: const Center(child: Text("")),
+          title: Column(
+            children: [
+              const SizedBox(
+                height: 35,
+              ),
+              Center(
+                  child: Text(
+                'SALDO DISPONIBLE',
+                style: TextStyle(
+                  //backgroundColor: Theme.of(context).colorScheme.surface,
+                  color: Theme.of(context).colorScheme.tertiary,
+                  fontSize: 17,
+                ),
+              )),
+            ],
+          ),
           actions: [
             ThemeButton(
               onTap: () {
@@ -39,11 +54,16 @@ class _HomeViewState extends State<HomeView> {
             );
           }),
         ),
-        body: const SafeArea(
+        body: SafeArea(
             child: Column(
           children: [
-            Balance(),
-            MovimientosHome()
+            const Balance(),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 5.0),
+              child: const Text('Transacciones Recientes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            const MovimientosHome()
             //TransactionsHome(),
           ],
         )));

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart'; // Importar rxdart para combinar streams
 
 FirebaseFirestore db = FirebaseFirestore.instance;
 
@@ -97,4 +98,46 @@ Future<void> updateIngreso(String idGasto, String newTitulo, String newTipo,
 // Borrar ingreso de la base de datos
 Future<void> deleteIngreso(String id) async {
   await db.collection('ingresos').doc(id).delete();
+}
+
+// Funciones
+
+// Stream combinado para gastos e ingresos
+Stream<Map<String, int>> getMovimientosTotales() {
+  return Rx.combineLatest2<List<Map<String, dynamic>>,
+      List<Map<String, dynamic>>, Map<String, int>>(
+    getGastosStream(),
+    getIngresosStream(),
+    (gastos, ingresos) {
+      // Calcular total de gastos del mes, asegurando que las cantidades sean tratadas como int
+      final totalGastos = gastos
+          .where((gasto) =>
+              gasto['fecha'].month == DateTime.now().month &&
+              gasto['fecha'].year == DateTime.now().year)
+          .fold<int>(
+              0,
+              (acumulador, item) =>
+                  acumulador + (item['cantidad'] as num).toInt());
+
+      // Calcular total de ingresos del mes, asegurando que las cantidades sean tratadas como int
+      final totalIngresos = ingresos
+          .where((ingreso) =>
+              ingreso['fecha'].month == DateTime.now().month &&
+              ingreso['fecha'].year == DateTime.now().year)
+          .fold<int>(
+              0,
+              (acumulador, item) =>
+                  acumulador + (item['cantidad'] as num).toInt());
+
+      // Calcular saldo disponible
+      final saldoDisponible = totalIngresos - totalGastos;
+
+      // Retornar un mapa con los valores calculados
+      return {
+        'saldoDisponible': saldoDisponible,
+        'totalIngresos': totalIngresos,
+        'totalGastos': totalGastos,
+      };
+    },
+  );
 }

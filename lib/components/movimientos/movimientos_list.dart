@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:wallet/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Importa Cloud Firestore
-import 'movimientos/gasto_tile.dart'; // Asegúrate de tener también 'ingreso_tile.dart'
-import 'movimientos/ingreso_tile.dart'; // Importa tu widget IngresoTile
+import 'components/gasto_tile.dart'; // Asegúrate de tener también 'ingreso_tile.dart'
+import 'components/ingreso_tile.dart'; // Importa tu widget IngresoTile
 import 'package:rxdart/rxdart.dart'; // Importa RxDart
 
 class MovimientosList extends StatelessWidget {
@@ -41,25 +41,36 @@ class MovimientosList extends StatelessWidget {
                       await deleteGasto(id);
                     },
                     confirmDismiss: () async {
-                      bool result = await showDialog(
+                      final result = await showDialog<bool>(
                         context: context,
+                        barrierDismissible: true,
                         builder: (context) {
                           return AlertDialog(
                             title: const Text('¿ Eliminar gasto ?'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancelar'),
+                                child: Text(
+                                  'Cancelar',
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .tertiary),
+                                ),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Sí, eliminar'),
+                                child: Text('Sí, eliminar',
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .tertiary)),
                               ),
                             ],
                           );
                         },
                       );
-                      return result;
+                      return result ?? false; // Retorna false si result es null
                     },
                     onTap: () async {
                       await Navigator.pushNamed(
@@ -85,25 +96,34 @@ class MovimientosList extends StatelessWidget {
                       await deleteIngreso(id);
                     },
                     confirmDismiss: () async {
-                      bool result = await showDialog(
+                      final result = await showDialog<bool>(
                         context: context,
+                        barrierDismissible: true,
                         builder: (context) {
                           return AlertDialog(
                             title: const Text('¿ Eliminar ingreso ?'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancelar'),
+                                child: Text('Cancelar',
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .tertiary)),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Sí, eliminar'),
+                                child: Text('Sí, eliminar',
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .tertiary)),
                               ),
                             ],
                           );
                         },
                       );
-                      return result;
+                      return result ?? false; // Retorna false si result es null
                     },
                     onTap: () async {
                       await Navigator.pushNamed(
