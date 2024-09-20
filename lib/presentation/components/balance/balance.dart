@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../services/firebase_service.dart';
+import 'package:provider/provider.dart';
+import 'package:wallet/core/services/firebase_service.dart';
+import 'package:wallet/data/repositories/movimiento_repository.dart';
 import 'cards.dart'; // Asegúrate de que este archivo exista y sea accesible
 
 class Balance extends StatelessWidget {
@@ -7,9 +9,14 @@ class Balance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firebaseService = Provider.of<FirebaseService>(
+        context); // Obtener FirebaseService del contexto
+    final repository = MovimientoRepository(
+        firebaseService); // Crear instancia del repositorio
+
     return Column(
       children: [
-        _buildBalanceHeader(context),
+        _buildBalanceHeader(repository), // Pasar el repositorio
         _buildActionButtons(context),
         _buildCardList(),
         const SizedBox(
@@ -19,9 +26,9 @@ class Balance extends StatelessWidget {
     );
   }
 
-  Widget _buildBalanceHeader(BuildContext context) {
+  Widget _buildBalanceHeader(MovimientoRepository repository) {
     return StreamBuilder<Map<String, int>>(
-      stream: getMovimientosTotales(),
+      stream: repository.getMovimientosTotales(), // Usar el repositorio
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           // Mientras se cargan los datos, mostrar una versión inicial
@@ -38,9 +45,9 @@ class Balance extends StatelessWidget {
 
         // Acceder a los datos del snapshot
         final data = snapshot.data!;
-        final saldoDisponible = data['saldoDisponible']!;
-        final totalIngresos = data['totalIngresos']!;
-        final totalGastos = data['totalGastos']!;
+        final saldoDisponible = data['saldoDisponible'] ?? 0;
+        final totalIngresos = data['totalIngresos'] ?? 0;
+        final totalGastos = data['totalGastos'] ?? 0;
 
         return Column(
           children: [

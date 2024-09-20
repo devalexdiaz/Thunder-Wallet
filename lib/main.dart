@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wallet/data/repositories/movimiento_repository.dart';
 import 'package:wallet/presentation/pages/add_gasto_page.dart';
 import 'presentation/pages/add_ingreso_page.dart';
 import 'presentation/pages/edit_ingreso_page.dart';
 import 'presentation/pages/edit_gasto_page.dart';
-import 'firebase_options.dart';
+import 'core/utils/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-
+import 'package:wallet/core/services/firebase_service.dart';
 import 'presentation/screens/main_screen.dart';
-import 'theme/theme_provider.dart';
+import 'core/providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,8 +17,15 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        Provider(create: (_) => FirebaseService()),
+        ProxyProvider<FirebaseService, MovimientoRepository>(
+          update: (_, firebaseService, __) =>
+              MovimientoRepository(firebaseService),
+        ),
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+      ],
       child: const MyApp(),
     ),
   );

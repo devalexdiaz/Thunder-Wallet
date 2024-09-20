@@ -6,7 +6,7 @@ class IngresoTile extends StatelessWidget {
   final int cantidad;
   final String titulo;
   final String tipo;
-  final DateTime fecha;
+  final DateTime fecha; // Cambiado a DateTime
   final Future<void> Function(String id) onDismissed;
   final Future<bool> Function() confirmDismiss;
   final Future<void> Function() onTap;
@@ -25,7 +25,8 @@ class IngresoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fechaFormateada = DateFormat('dd/MM/yyyy').format(fecha);
+    final fechaFormateada =
+        DateFormat('dd/MM/yyyy').format(fecha); // Usa DateTime directamente
 
     return Dismissible(
       onDismissed: (direction) async {

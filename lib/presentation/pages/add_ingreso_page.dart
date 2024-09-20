@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:wallet/services/firebase_service.dart';
-
-// Componentes de formulario
-import 'widgets/data_time_selector.dart';
-import 'widgets/text_field_widget.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Importa Cloud Firestore
+import 'package:wallet/data/repositories/movimiento_repository.dart'; // Verifica que el repositorio sea público
+import '../widgets/data_time_selector.dart';
+import '../widgets/text_field_widget.dart';
 
 /// Página para agregar un ingreso.
 class AddIngresoPage extends StatefulWidget {
   const AddIngresoPage({super.key});
 
   @override
-  _AddIngresoPageState createState() => _AddIngresoPageState();
+  AddIngresoPageState createState() => AddIngresoPageState();
 }
 
-class _AddIngresoPageState extends State<AddIngresoPage> {
+class AddIngresoPageState extends State<AddIngresoPage> {
   final TextEditingController _cantidadController = TextEditingController();
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _tipoController = TextEditingController();
@@ -39,7 +39,6 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Usa el nuevo TextFieldWidget que acepta los colores del theme.
             TextFieldWidget(
               controller: _tituloController,
               hintText: 'Ingrese el título',
@@ -56,13 +55,11 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
-            // Usa el nuevo DateTimeSelector que acepta los colores del theme.
             DateTimeSelector(
               selectedDateTime: _selectedDateTime,
               onPressed: _selectDateTime,
             ),
             const SizedBox(height: 20),
-            // Botón actualizado con colores del theme.
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -86,8 +83,9 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
     );
   }
 
-  /// Muestra un diálogo para seleccionar la fecha y la hora.
   Future<void> _selectDateTime() async {
+    if (!mounted) return; // Verifica si el widget está montado
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -96,12 +94,16 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
     );
 
     if (pickedDate != null) {
+      if (!mounted) return; // Verifica si el widget está montado
+
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(DateTime.now()),
       );
 
       if (pickedTime != null) {
+        if (!mounted) return; // Verifica si el widget está montado
+
         setState(() {
           _selectedDateTime = DateTime(
             pickedDate.year,
@@ -115,7 +117,6 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
     }
   }
 
-  /// Guarda el ingreso si todos los campos son válidos.
   Future<void> _saveIngreso() async {
     final String titulo = _tituloController.text.trim();
     final String tipo = _tipoController.text.trim();
@@ -126,18 +127,33 @@ class _AddIngresoPageState extends State<AddIngresoPage> {
         cantidad != null &&
         _selectedDateTime != null) {
       try {
-        await addIngreso(titulo, tipo, cantidad, _selectedDateTime!);
-        Navigator.pop(context);
+        final repository =
+            Provider.of<MovimientoRepository>(context, listen: false);
+
+        // Convierte DateTime a Timestamp
+        final Timestamp timestamp = Timestamp.fromDate(_selectedDateTime!);
+
+        // Llama a la función genérica para agregar movimientos
+        await repository.addMovimiento(
+            'ingresos', titulo, tipo, cantidad, timestamp);
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
       } catch (_) {
-        _showErrorSnackbar('Error al guardar el ingreso. Inténtelo de nuevo.');
+        if (mounted) {
+          _showErrorSnackbar(
+              'Error al guardar el ingreso. Inténtelo de nuevo.');
+        }
       }
     } else {
-      _showErrorSnackbar(
-          'Por favor, complete todos los campos con datos válidos');
+      if (mounted) {
+        _showErrorSnackbar(
+            'Por favor, complete todos los campos con datos válidos');
+      }
     }
   }
 
-  /// Muestra un mensaje de error en un Snackbar.
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),

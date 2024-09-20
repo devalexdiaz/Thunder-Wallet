@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:wallet/services/firebase_service.dart';
-
-// Componentes de formulario
-import 'widgets/data_time_selector.dart';
-import 'widgets/text_field_widget.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Importa Cloud Firestore
+import 'package:wallet/data/repositories/movimiento_repository.dart';
+import '../widgets/data_time_selector.dart';
+import '../widgets/text_field_widget.dart';
 
 class EditIngresoPage extends StatefulWidget {
   const EditIngresoPage({super.key});
@@ -35,7 +35,9 @@ class _EditIngresoPageState extends State<EditIngresoPage> {
       _cantidadController.text = arguments['cantidad'].toString();
       _tituloController.text = arguments['titulo'];
       _tipoController.text = arguments['tipo'];
-      _selectedDateTime = arguments['fecha']?.toDate();
+      _selectedDateTime = arguments['fecha'] is Timestamp
+          ? (arguments['fecha'] as Timestamp).toDate()
+          : arguments['fecha'] as DateTime;
       _isInitialized = true;
     }
 
@@ -48,7 +50,6 @@ class _EditIngresoPageState extends State<EditIngresoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Usa el TextFieldWidget que acepta los colores del tema
             TextFieldWidget(
               controller: _tituloController,
               hintText: 'Ingrese el título',
@@ -65,13 +66,11 @@ class _EditIngresoPageState extends State<EditIngresoPage> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
-            // Usa el DateTimeSelector que acepta los colores del tema
             DateTimeSelector(
               selectedDateTime: _selectedDateTime,
               onPressed: _selectDateTime,
             ),
             const SizedBox(height: 20),
-            // Botón actualizado con colores del theme
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -96,31 +95,41 @@ class _EditIngresoPageState extends State<EditIngresoPage> {
   }
 
   Future<void> _selectDateTime() async {
-    final DateTime? pickedDate = await showDatePicker(
+    final DateTime? pickedDate = await _showDatePicker();
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await _showTimePicker();
+
+      if (pickedTime != null) {
+        if (mounted) {
+          setState(() {
+            _selectedDateTime = DateTime(
+              pickedDate.year,
+              pickedDate.month,
+              pickedDate.day,
+              pickedTime.hour,
+              pickedTime.minute,
+            );
+          });
+        }
+      }
+    }
+  }
+
+  Future<DateTime?> _showDatePicker() async {
+    return showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
+  }
 
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(DateTime.now()),
-      );
-
-      if (pickedTime != null) {
-        setState(() {
-          _selectedDateTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-        });
-      }
-    }
+  Future<TimeOfDay?> _showTimePicker() async {
+    return showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(DateTime.now()),
+    );
   }
 
   Future<void> _updateIngreso() async {
@@ -133,23 +142,44 @@ class _EditIngresoPageState extends State<EditIngresoPage> {
         cantidad != null &&
         _selectedDateTime != null) {
       final Map arguments = ModalRoute.of(context)!.settings.arguments as Map;
-      await updateIngreso(
-        arguments['id'],
-        titulo,
-        tipo,
-        cantidad,
-        _selectedDateTime!,
-      );
-      Navigator.pop(context);
+      final repository =
+          Provider.of<MovimientoRepository>(context, listen: false);
+
+      try {
+        // Convierte DateTime a Timestamp
+        final Timestamp timestamp = Timestamp.fromDate(_selectedDateTime!);
+
+        // Llama a la función genérica para actualizar movimientos
+        await repository.updateMovimiento(
+          'ingresos', // Colección de ingresos
+          arguments['id'],
+          titulo,
+          tipo,
+          cantidad,
+          timestamp,
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          _showErrorSnackbar('Error al actualizar el ingreso: $e');
+        }
+      }
     } else {
-      _showErrorSnackbar(
-          'Por favor, complete todos los campos con datos válidos');
+      if (mounted) {
+        _showErrorSnackbar(
+            'Por favor, complete todos los campos con datos válidos');
+      }
     }
   }
 
   void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 }

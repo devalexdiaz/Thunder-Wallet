@@ -1,18 +1,21 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:wallet/services/firebase_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Importa Cloud Firestore
-import 'components/gasto_tile.dart'; // Asegúrate de tener también 'ingreso_tile.dart'
-import 'components/ingreso_tile.dart'; // Importa tu widget IngresoTile
-import 'package:rxdart/rxdart.dart'; // Importa RxDart
+import 'package:wallet/data/repositories/movimiento_repository.dart';
+import 'components/gasto_tile.dart';
+import 'components/ingreso_tile.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:provider/provider.dart'; // Asegúrate de tener esta importación
 
 class MovimientosList extends StatelessWidget {
   const MovimientosList({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final movimientoRepository = Provider.of<MovimientoRepository>(context);
+
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: combineGastosIngresosStreams(),
+      stream: combineGastosIngresosStreams(movimientoRepository),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -24,7 +27,13 @@ class MovimientosList extends StatelessWidget {
 
         final movimientos = snapshot.data ?? [];
 
+        if (movimientos.isEmpty) {
+          return const Center(child: Text('No hay movimientos disponibles.'));
+        }
+
         return ListView.builder(
+          physics:
+              const BouncingScrollPhysics(), // Otras opciones son ClampingScrollPhysics()
           itemCount: movimientos.length,
           itemBuilder: (context, index) {
             final movimiento = movimientos[index];
@@ -32,13 +41,19 @@ class MovimientosList extends StatelessWidget {
 
             return isGasto
                 ? GastoTile(
-                    id: movimiento['id'],
-                    titulo: movimiento['title'],
-                    tipo: movimiento['type'],
+                    id: movimiento['id']?.toString() ?? 'Sin ID',
+                    titulo: movimiento['titulo']?.toString() ?? 'Sin título',
+                    tipo: movimiento['tipo']?.toString() ?? 'Sin tipo',
                     cantidad: movimiento['cantidad'],
-                    fecha: movimiento['fecha'].toDate(),
+                    fecha: DateTime.tryParse(movimiento['fecha'].toString()) ??
+                        DateTime.now(),
                     onDismissed: (id) async {
-                      await deleteGasto(id);
+                      try {
+                        await movimientoRepository.deleteMovimiento(
+                            'gastos', id);
+                      } catch (e) {
+                        //print('Error eliminando el movimiento: $e');
+                      }
                     },
                     confirmDismiss: () async {
                       final result = await showDialog<bool>(
@@ -50,13 +65,11 @@ class MovimientosList extends StatelessWidget {
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: Text(
-                                  'Cancelar',
-                                  style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .tertiary),
-                                ),
+                                child: Text('Cancelar',
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .tertiary)),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
@@ -70,15 +83,17 @@ class MovimientosList extends StatelessWidget {
                           );
                         },
                       );
-                      return result ?? false; // Retorna false si result es null
+                      return result ?? false;
                     },
                     onTap: () async {
                       await Navigator.pushNamed(
                         context,
                         '/edit-gasto',
                         arguments: {
-                          'titulo': movimiento['title'],
-                          'tipo': movimiento['type'],
+                          'titulo': movimiento[
+                              'titulo'], // Cambiado de 'title' a 'titulo'
+                          'tipo':
+                              movimiento['tipo'], // Cambiado de 'type' a 'tipo'
                           'cantidad': movimiento['cantidad'],
                           'fecha': movimiento['fecha'],
                           'id': movimiento['id'],
@@ -87,13 +102,15 @@ class MovimientosList extends StatelessWidget {
                     },
                   )
                 : IngresoTile(
-                    id: movimiento['id'],
-                    titulo: movimiento['title'],
-                    tipo: movimiento['type'],
+                    id: movimiento['id']?.toString() ?? 'Sin ID',
+                    titulo: movimiento['titulo']?.toString() ?? 'Sin título',
+                    tipo: movimiento['tipo']?.toString() ?? 'Sin tipo',
                     cantidad: movimiento['cantidad'],
-                    fecha: movimiento['fecha'].toDate(),
+                    fecha: DateTime.tryParse(movimiento['fecha'].toString()) ??
+                        DateTime.now(),
                     onDismissed: (id) async {
-                      await deleteIngreso(id);
+                      await movimientoRepository.deleteMovimiento(
+                          'ingresos', id);
                     },
                     confirmDismiss: () async {
                       final result = await showDialog<bool>(
@@ -123,15 +140,17 @@ class MovimientosList extends StatelessWidget {
                           );
                         },
                       );
-                      return result ?? false; // Retorna false si result es null
+                      return result ?? false;
                     },
                     onTap: () async {
                       await Navigator.pushNamed(
                         context,
                         '/edit-ingreso',
                         arguments: {
-                          'titulo': movimiento['title'],
-                          'tipo': movimiento['type'],
+                          'titulo': movimiento[
+                              'titulo'], // Cambiado de 'title' a 'titulo'
+                          'tipo':
+                              movimiento['tipo'], // Cambiado de 'type' a 'tipo'
                           'cantidad': movimiento['cantidad'],
                           'fecha': movimiento['fecha'],
                           'id': movimiento['id'],
@@ -146,11 +165,11 @@ class MovimientosList extends StatelessWidget {
   }
 }
 
-// Función para combinar y ordenar los streams
-Stream<List<Map<String, dynamic>>> combineGastosIngresosStreams() {
+Stream<List<Map<String, dynamic>>> combineGastosIngresosStreams(
+    MovimientoRepository repository) {
   return Rx.combineLatest2(
-    getGastosStream(),
-    getIngresosStream(),
+    repository.getMovimientosStream('gastos'),
+    repository.getMovimientosStream('ingresos'),
     (List<Map<String, dynamic>> gastos, List<Map<String, dynamic>> ingresos) {
       final allMovimientos = [
         ...gastos.map((gasto) => {...gasto, 'source': 'gastos'}),
@@ -159,8 +178,8 @@ Stream<List<Map<String, dynamic>>> combineGastosIngresosStreams() {
 
       // Ordenamos por fecha y hora en orden descendente
       allMovimientos.sort((a, b) {
-        final fechaA = parseDate(a['fecha']);
-        final fechaB = parseDate(b['fecha']);
+        final fechaA = a['fecha'] as DateTime;
+        final fechaB = b['fecha'] as DateTime;
         return fechaB.compareTo(fechaA); // Ordena de más reciente a más antiguo
       });
 
@@ -177,34 +196,4 @@ DateTime parseDate(Timestamp timestamp) {
 String formatDate(Timestamp timestamp) {
   // Formatea Timestamp a una cadena en formato 'dd/MM/yyyy'
   return DateFormat('dd/MM/yyyy').format(parseDate(timestamp));
-}
-
-Stream<List<Map<String, dynamic>>> getGastosStream() {
-  return db.collection('gastos').snapshots().map((querySnapshot) {
-    return querySnapshot.docs.map((documento) {
-      final data = documento.data();
-      return {
-        'cantidad': data['cantidad'],
-        'title': data['title'],
-        'type': data['type'],
-        'fecha': data['fecha'], // 'fecha' es un Timestamp
-        'id': documento.id,
-      };
-    }).toList();
-  });
-}
-
-Stream<List<Map<String, dynamic>>> getIngresosStream() {
-  return db.collection('ingresos').snapshots().map((querySnapshot) {
-    return querySnapshot.docs.map((documento) {
-      final data = documento.data();
-      return {
-        'cantidad': data['cantidad'],
-        'title': data['title'],
-        'type': data['type'],
-        'fecha': data['fecha'], // 'fecha' es un Timestamp
-        'id': documento.id,
-      };
-    }).toList();
-  });
 }
